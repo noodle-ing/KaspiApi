@@ -15,7 +15,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<KaspiOrderService>();
 builder.Services.AddHostedService<KaspiOrderWorker>();
 
-var app = builder.Build();
+var app = builder.Build();  
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

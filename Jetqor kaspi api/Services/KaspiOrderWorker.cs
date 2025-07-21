@@ -21,7 +21,7 @@ public class KaspiOrderWorker : BackgroundService
                 await kaspiService.FetchAndSaveOrdersAsync();
             }
 
-            await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
+            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
         }
     }
 }

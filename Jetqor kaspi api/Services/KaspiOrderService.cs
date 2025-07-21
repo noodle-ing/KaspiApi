@@ -17,7 +17,7 @@ public class KaspiOrderService
     public async Task FetchAndSaveOrdersAsync()
     {
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var tenMinutesAgo = now - TimeSpan.FromMinutes(10).TotalMilliseconds;
+        var tenMinutesAgo = now - TimeSpan.FromMinutes(1).TotalMilliseconds;
 
         string url = $"https://kaspi.kz/shop/api/v2/orders?page[number]=0&page[size]=100" +
                      $"&filter[orders][creationDate][$ge]={tenMinutesAgo}" +
@@ -25,7 +25,6 @@ public class KaspiOrderService
                      $"&filter[orders][state]=ARCHIVE";
 
         var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Add("Content-Type", "application/vnd.api+json");
         request.Headers.Add("X-Auth-Token", "fq4r4x1n7ngMvU/SB8y6SAdPjElXZ8K8g0ORtk+3FXI=");
 
         var response = await _httpClient.SendAsync(request);
