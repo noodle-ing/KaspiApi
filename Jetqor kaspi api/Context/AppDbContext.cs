@@ -8,4 +8,15 @@ public class AppDbContext : DbContext
     {
     }
     public DbSet<Order> Orders { get; set; }
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Order>()
+            .Property(o => o.kaspi_status)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<Order>()
+            .Property(o => o.status)
+            .HasConversion<string>();
+    }
 }

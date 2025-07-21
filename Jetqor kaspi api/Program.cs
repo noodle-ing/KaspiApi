@@ -12,8 +12,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<KaspiOrderService>();
-builder.Services.AddHostedService<KaspiOrderWorker>();
+builder.Services.AddHostedService<KaspiOrderChecker>();
+builder.Services.AddControllers();
 
 var app = builder.Build();  
 
