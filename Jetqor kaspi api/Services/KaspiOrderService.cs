@@ -1,43 +1,49 @@
 ﻿using Jetqor_kaspi_api.Enum;
 using Newtonsoft.Json.Linq;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Jetqor_kaspi_api.Services;
 
-public class KaspiOrderChecker : BackgroundService
+public class KaspiOrderService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IHttpClientFactory _httpClientFactory;
 
-    public KaspiOrderChecker(IServiceScopeFactory scopeFactory, IHttpClientFactory httpClientFactory)
+    public KaspiOrderService(
+        IServiceScopeFactory scopeFactory,
+        IHttpClientFactory httpClientFactory)
     {
         _scopeFactory = scopeFactory;
         _httpClientFactory = httpClientFactory;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            await CheckAndSaveOrdersOnceAsync();
-            await Task.Delay(TimeSpan.FromSeconds(20), stoppingToken);
-        }
-    }
-
-    public async Task CheckAndSaveOrdersOnceAsync()
+    public async Task CheckAndSaveOrdersOnceAsync(string token)
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var client = _httpClientFactory.CreateClient();
-        client.DefaultRequestHeaders.Add("X-Auth-Token", "fq4r4x1n7ngMvU/SB8y6SAdPjElXZ8K8g0ORtk+3FXI=");
-
-        var url = "https://kaspi.kz/shop/api/v2/orders?page[number]=0&page[size]=20&filter[orders][state]=NEW";
-
         try
         {
+            var end = DateTime.UtcNow;
+            var start = end.AddDays(-1);
+
+            long startTimestamp = new DateTimeOffset(start).ToUnixTimeMilliseconds();
+            long endTimestamp = new DateTimeOffset(end).ToUnixTimeMilliseconds();
+
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Add("X-Auth-Token", token);
+
+            
+            var url = $"https://kaspi.kz/shop/api/v2/orders" +
+                      $"?page[number]=0&page[size]=100" +
+                      $"&filter[orders][creationDate][$ge]={startTimestamp}" +
+                      $"&filter[orders][creationDate][$le]={endTimestamp}" +
+                      $"&filter[orders][state]=ARCHIVE" +
+                      $"&include[orders]=user";
+
             var response = await client.GetAsync(url);
             response.EnsureSuccessStatusCode();
+            Console.WriteLine(url);
 
             var json = await response.Content.ReadAsStringAsync();
             var obj = JObject.Parse(json);
@@ -53,16 +59,20 @@ public class KaspiOrderChecker : BackgroundService
                         })
                 : new Dictionary<string, dynamic>();
 
+            int newOrders = 0, skippedOrders = 0;
+
             foreach (var order in obj["data"])
             {
                 var kaspiCode = (string)order["attributes"]?["code"];
-                bool exists = db.Orders.Any(o => o.kaspi_code == kaspiCode);
-                if (exists) continue;
+                if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
+                {
+                    skippedOrders++;
+                    continue;
+                }
 
-                int newId = (db.Orders.OrderByDescending(o => o.Id).Select(o => o.Id).FirstOrDefault()) + 1;
-
+                int newId = db.Orders.OrderByDescending(o => o.Id).Select(o => o.Id).FirstOrDefault() + 1;
                 string statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
-                string stateStr = ((string)order["attributes"]?["state"])?.ToUpperInvariant() ?? "";
+                string stateStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
 
                 Status status = MapOrderStatus(statusStr);
                 KaspiStatus kaspiStatus = MapKaspiStatus(stateStr);
@@ -71,7 +81,7 @@ public class KaspiOrderChecker : BackgroundService
                 string customerName = included.ContainsKey(customerId) ? included[customerId].name : "";
                 string customerPhone = included.ContainsKey(customerId) ? included[customerId].phone : "";
 
-                db.Orders.Add(new Order
+                var newOrder = new Order
                 {
                     Id = newId,
                     kaspi_code = kaspiCode,
@@ -85,15 +95,19 @@ public class KaspiOrderChecker : BackgroundService
                     express = (int?)order["attributes"]?["express"] ?? 0,
                     customer_name = customerName,
                     customer_phone = customerPhone
-                });
+                };
 
+                db.Orders.Add(newOrder);
                 await db.SaveChangesAsync();
-                Console.WriteLine($"[+] Новый заказ добавлен: {kaspiCode} (ID {newId})");
+                newOrders++;
             }
+
+            Console.WriteLine($"[SUMMARY] Done. Added {newOrders} orders, skipped {skippedOrders}.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[Ошибка] {ex.Message}");
+            Console.WriteLine($"[ERROR] {ex.Message}");
+            throw;
         }
     }
 
@@ -108,23 +122,12 @@ public class KaspiOrderChecker : BackgroundService
             "CANCELLING" => KaspiStatus.CANCELLING,
             "KASPI_DELIVERY_RETURN_REQUESTED" => KaspiStatus.KASPI_DELIVERY_RETURN_REQUESTED,
             "RETURNED" => KaspiStatus.RETURNED,
-            "PICKUP" => KaspiStatus.ACCEPTED_BY_MERCHANT, 
-            _ => throw new Exception($"Неизвестный KaspiStatus: {value}")
+            _ => throw new Exception($"Unknown KaspiStatus: {value}")
         };
     }
 
     private Status MapOrderStatus(string value)
     {
-        return value switch
-        {
-            "CANCELLED" => Status.cancelled,
-            "COMPLETED" => Status.completed,
-            "CANCELLING" => Status.assembly,
-            "KASPI_DELIVERY_RETURN_REQUESTED" => Status.indelivery,
-            "APPROVED_BY_BANK" => Status.waiting,
-            "ACCEPTED_BY_MERCHANT" => Status.packed,
-            "PICKUP" => Status.indelivery, 
-            _ => throw new Exception($"Неизвестный OrderStatus: {value}")
-        };
+        return Status.assembly;
     }
 }

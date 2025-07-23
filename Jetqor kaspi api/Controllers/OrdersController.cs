@@ -1,34 +1,23 @@
-﻿using Jetqor_kaspi_api.Services;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc;
+using Jetqor_kaspi_api.Services;
 
 namespace Jetqor_kaspi_api.Controllers;
+
 [ApiController]
-[Route("kaspiApi/[controller]")]
+[Route("api/[controller]")]
 public class OrdersController : ControllerBase
-{ 
-    private readonly AppDbContext _dbContext;
-    private readonly KaspiOrderChecker _orderChecker;
+{
+    private readonly KaspiOrderService _orderService;
 
-    public OrdersController(AppDbContext dbContext, KaspiOrderChecker orderChecker)
+    public OrdersController(KaspiOrderService orderService)
     {
-        _dbContext = dbContext;
-        _orderChecker = orderChecker;
-    }
-    
-    [HttpGet]
-    [HttpGet("test")]
-    public async Task<IActionResult> GetOrders()
-    {
-        var orders = await _dbContext.Orders.ToListAsync();
-        return Ok(orders);
+        _orderService = orderService;
     }
 
-    [HttpPost("update")]
-    public async Task<IActionResult> UpdateOrders()
+    [HttpPost("sync")]
+    public async Task<IActionResult> SyncOrders([FromHeader(Name = "X-Auth-Token")] string token)
     {
-        await _orderChecker.CheckAndSaveOrdersOnceAsync();
-        return Ok(new { message = "Обновление заказов выполнено" });
+        await _orderService.CheckAndSaveOrdersOnceAsync(token);
+        return Ok(new { message = "Orders synced" });
     }
-
 }

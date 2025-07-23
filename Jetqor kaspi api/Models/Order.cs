@@ -1,7 +1,10 @@
-﻿using Jetqor_kaspi_api.Enum;
-
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Jetqor_kaspi_api.Enum;
+[Table("Order")]
 public class Order
 {
+    [Key]
     public int Id { get; set; }
     public string kaspi_code { get; set; }
     public string? wildberries_code { get; set; }
