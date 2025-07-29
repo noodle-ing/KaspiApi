@@ -128,6 +128,16 @@ public class KaspiOrderService
 
     private Status MapOrderStatus(string value)
     {
-        return Status.assembly;
+        return value.ToLower() switch
+        {
+            "APPROVED_BY_BANK" => Status.assembly,
+            "ACCEPTED_BY_MERCHANT" => Status.assembly,
+            "COMPLETED" => Status.completed,
+            "CANCELLED" => Status.cancelled,
+            "CANCELLING" => Status.cancelled,
+            "KASPI_DELIVERY_RETURN_REQUESTED" => Status.cancelled,
+            "RETURNED" => Status.cancelled,
+            _ => Status.assembly
+        };
     }
 }
