@@ -7,13 +7,15 @@ public class KaspiOrderService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly OrderSyncService _orderSyncService;
 
     public KaspiOrderService(
         IServiceScopeFactory scopeFactory,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory, OrderSyncService orderSyncService)
     {
         _scopeFactory = scopeFactory;
         _httpClientFactory = httpClientFactory;
+        _orderSyncService = orderSyncService;
     }
 
     public async Task CheckAndSaveOrdersOnceAsync(string token)
@@ -63,6 +65,11 @@ public class KaspiOrderService
 
             foreach (var order in obj["data"])
             {
+                var attributes = order["attributes"];
+                string code = attributes["code"].ToObject<string>();                
+                
+                await _orderSyncService.SyncOrderAsync(code, token);
+                
                 var kaspiCode = (string)order["attributes"]?["code"];
                 if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
                 {
@@ -90,8 +97,8 @@ public class KaspiOrderService
                     marketplace_created_at = DateTimeOffset.FromUnixTimeMilliseconds((long)order["attributes"]["creationDate"]).UtcDateTime,
                     created_at = DateTime.UtcNow,
                     updated_at = DateTime.UtcNow,
-                    total_price = (double?)order["attributes"]?["totalPrice"] ?? 0,
-                    delivery_cost = (double?)order["attributes"]?["deliveryCost"] ?? 0,
+                    total_price = (int?)order["attributes"]?["totalPrice"] ?? 0,
+                    delivery_cost = (int?)order["attributes"]?["deliveryCost"] ?? 0,
                     express = (int?)order["attributes"]?["express"] ?? 0,
                     customer_name = customerName,
                     customer_phone = customerPhone
@@ -109,6 +116,7 @@ public class KaspiOrderService
             Console.WriteLine($"[ERROR] {ex.Message}");
             throw;
         }
+        
     }
 
     private KaspiStatus MapKaspiStatus(string value)

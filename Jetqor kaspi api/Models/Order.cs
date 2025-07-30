@@ -1,6 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Jetqor_kaspi_api.Enum;
+using Jetqor_kaspi_api.Models;
+
 [Table("Order")]
 public class Order
 {
@@ -12,8 +14,8 @@ public class Order
     public DateTime created_at { get; set; }
     public DateTime updated_at { get; set; }
     public DateTime marketplace_created_at { get; set; }
-    public double total_price { get; set; }
-    public double delivery_cost { get; set; }
+    public int total_price { get; set; }
+    public int delivery_cost { get; set; }
     
     public KaspiStatus kaspi_status { get; set; }
     public Status status { get; set; }
@@ -21,4 +23,6 @@ public class Order
     public string customer_phone { get; set; }
     public string customer_name { get; set; }
     public int express { get; set; }
+    
+    public ICollection<OrderProduct> OrderProducts { get; set; }
 }
