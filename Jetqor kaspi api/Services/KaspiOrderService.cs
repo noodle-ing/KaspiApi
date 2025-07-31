@@ -26,12 +26,14 @@ public class KaspiOrderService
 
         try
         {
-            var end = DateTime.UtcNow;
+            var kazakhstanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Almaty");
+
+            var end = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, kazakhstanTimeZone);
             var start = end.AddDays(-1);
 
-            long startTimestamp = new DateTimeOffset(start).ToUnixTimeMilliseconds();
-            long endTimestamp = new DateTimeOffset(end).ToUnixTimeMilliseconds();
-
+            long startTimestamp = new DateTimeOffset(start, kazakhstanTimeZone.GetUtcOffset(start)).ToUnixTimeMilliseconds();
+            long endTimestamp = new DateTimeOffset(end, kazakhstanTimeZone.GetUtcOffset(end)).ToUnixTimeMilliseconds();
+            
             var client = _httpClientFactory.CreateClient();
             client.DefaultRequestHeaders.Clear();
             client.DefaultRequestHeaders.Add("X-Auth-Token", token);
@@ -68,6 +70,7 @@ public class KaspiOrderService
             {
                 var attributes = order["attributes"];
                 string code = attributes["code"].ToObject<string>();                
+                string id = order["id"].ToObject<string>();                
                 
                 await _orderSyncService.SyncOrderAsync(code, token);
                 

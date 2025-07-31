@@ -89,8 +89,7 @@ public class OrderSyncService
                 Console.WriteLine(ex.Message);
             }
         }
-
-
+        
         await context.SaveChangesAsync();
     }
 }
