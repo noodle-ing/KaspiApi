@@ -3,10 +3,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "9090:9090"
+    network_mode: "host"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:9090
     volumes:
       - ./Jetqor kaspi api/appsettings.json:/app/appsettings.json:ro
+    container_name: kaspiapi-kaspi-api-1

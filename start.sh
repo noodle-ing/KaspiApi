@@ -29,14 +29,14 @@ docker compose up -d
 sleep 5
 
 # Проверяем статус контейнера
-if docker ps | grep -q kaspi-api-container; then
+if docker ps | grep -q kaspiapi-kaspi-api-1; then
     echo "✅ Приложение успешно запущено!"
     echo "📍 API доступно по адресу: http://localhost:9090"
     echo "📖 Swagger документация: http://localhost:9090/swagger"
     echo ""
     echo "📝 Полезные команды:"
-    echo "   - Посмотреть логи: docker-compose logs -f"
-    echo "   - Остановить приложение: docker-compose down"
-    echo "   - Перезапустить: docker-compose restart"
+    echo "   - Посмотреть логи: docker compose logs -f kaspi-api"
+    echo "   - Остановить приложение: docker compose down"
+    echo "   - Перезапустить: docker compose restart kaspi-api"
 else
     echo "❌ Ошибка при запуске приложения!"
