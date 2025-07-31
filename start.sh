@@ -9,7 +9,7 @@ if ! command -v docker &> /dev/null; then
 fi
 
 # Проверяем, установлен ли Docker Compose
-if ! command -v docker-compose &> /dev/null; then
+if ! command -v docker compose &> /dev/null; then
     echo "❌ Docker Compose не установлен. Пожалуйста, установите Docker Compose."
     exit 1
 fi
