@@ -44,6 +44,7 @@ if (app.Environment.IsDevelopment())
 
 
 app.UseHttpsRedirection();
+app.UseCors("AllowAll"); // Enable CORS policy
 app.MapControllers();
 app.Run();
 
