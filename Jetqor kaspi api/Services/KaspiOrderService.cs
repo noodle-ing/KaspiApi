@@ -83,10 +83,9 @@ public class KaspiOrderService
 
                 int newId = db.Orders.OrderByDescending(o => o.Id).Select(o => o.Id).FirstOrDefault() + 1;
                 string statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
-                string stateStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
 
                 Status status = MapOrderStatus(statusStr);
-                KaspiStatus kaspiStatus = MapKaspiStatus(stateStr);
+                KaspiStatus kaspiStatus = MapKaspiStatus(statusStr);
 
                 string customerId = (string)order["relationships"]?["user"]?["data"]?["id"];
                 
