@@ -44,15 +44,9 @@ public class OrderSyncService
 
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
+        //fix line
         var order = await context.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
-        if (order == null)
-        {
-            order = new Order { kaspi_code = kaspiCode };
-            context.Orders.Add(order);
-            await context.SaveChangesAsync();
-        }
-
+        
         if (!entriesData.TryGetProperty("data", out var entryArray) || entryArray.ValueKind != JsonValueKind.Array || entryArray.GetArrayLength() == 0)
         {
             Console.WriteLine($"[INFO] No entries found for order {kaspiCode}");
@@ -70,20 +64,33 @@ public class OrderSyncService
                 var product = await _productSyncService.SyncProductAsync(articleCode);
                 var quantity = attributes.GetProperty("quantity").GetInt32();
 
-                var orderProduct = new OrderProduct
-                {
-                    orderId = order.Id,
-                    productId = product.id,
-                    count = quantity
-                };
+                var existingOrderProduct = await context.OrderProducts
+                    .FirstOrDefaultAsync(op => op.orderId == order.Id && op.productId == product.id);
 
-                context.OrderProducts.Add(orderProduct);
+                if (existingOrderProduct == null)
+                {
+                    var orderProduct = new OrderProduct
+                    {
+                        orderId = order.Id,
+                        productId = product.id,
+                        count = quantity
+                    };
+
+                    context.OrderProducts.Add(orderProduct);
+                }
+                else
+                {
+                    // Обновим количество, если нужно
+                    existingOrderProduct.count = quantity;
+                    context.OrderProducts.Update(existingOrderProduct);
+                }
             }
             catch (Exception ex)
-            { 
+            {
                 Console.WriteLine(ex.Message);
             }
         }
+
 
         await context.SaveChangesAsync();
     }
