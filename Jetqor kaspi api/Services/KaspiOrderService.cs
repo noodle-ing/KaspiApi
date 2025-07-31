@@ -69,8 +69,6 @@ public class KaspiOrderService
                 var attributes = order["attributes"];
                 string code = attributes["code"].ToObject<string>();                
                 
-                await _orderSyncService.SyncOrderAsync(code, token);
-                
                 var kaspiCode = (string)order["attributes"]?["code"];
                 if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
                 {
@@ -110,6 +108,17 @@ public class KaspiOrderService
 
                 db.Orders.Add(newOrder);
                 await db.SaveChangesAsync();
+                
+                // Синхронизируем детали заказа ПОСЛЕ его создания в базе
+                try
+                {
+                    await _orderSyncService.SyncOrderAsync(code, token);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[WARNING] Failed to sync order details for {code}: {ex.Message}");
+                }
+                
                 newOrders++;
             }
 

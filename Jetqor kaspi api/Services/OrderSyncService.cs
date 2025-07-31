@@ -44,8 +44,14 @@ public class OrderSyncService
 
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        //fix line
+        
         var order = await context.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
+        
+        if (order == null)
+        {
+            Console.WriteLine($"[ERROR] Order with kaspi_code {kaspiCode} not found in database");
+            return;
+        }
         
         if (!entriesData.TryGetProperty("data", out var entryArray) || entryArray.ValueKind != JsonValueKind.Array || entryArray.GetArrayLength() == 0)
         {
