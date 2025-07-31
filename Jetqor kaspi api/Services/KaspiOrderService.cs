@@ -26,12 +26,14 @@ public class KaspiOrderService
 
         try
         {
-            var end = DateTime.UtcNow;
+            var kazakhstanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Almaty");
+
+            var end = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, kazakhstanTimeZone);
             var start = end.AddDays(-1);
 
-            long startTimestamp = new DateTimeOffset(start).ToUnixTimeMilliseconds();
-            long endTimestamp = new DateTimeOffset(end).ToUnixTimeMilliseconds();
-
+            long startTimestamp = new DateTimeOffset(start, kazakhstanTimeZone.GetUtcOffset(start)).ToUnixTimeMilliseconds();
+            long endTimestamp = new DateTimeOffset(end, kazakhstanTimeZone.GetUtcOffset(end)).ToUnixTimeMilliseconds();
+            
             var client = _httpClientFactory.CreateClient();
             client.DefaultRequestHeaders.Clear();
             client.DefaultRequestHeaders.Add("X-Auth-Token", token);
@@ -68,7 +70,7 @@ public class KaspiOrderService
             {
                 var attributes = order["attributes"];
                 string code = attributes["code"].ToObject<string>();                
-                
+                string id = order["id"].ToObject<string>();
                 var kaspiCode = (string)order["attributes"]?["code"];
                 if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
                 {
@@ -112,7 +114,7 @@ public class KaspiOrderService
                 // Синхронизируем детали заказа ПОСЛЕ его создания в базе
                 try
                 {
-                    await _orderSyncService.SyncOrderAsync(code, token);
+                    await _orderSyncService.SyncOrderAsync(code, token, id);
                 }
                 catch (Exception ex)
                 {

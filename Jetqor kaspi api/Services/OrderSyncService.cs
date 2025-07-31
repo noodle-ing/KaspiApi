@@ -18,21 +18,9 @@ public class OrderSyncService
         _httpClient.DefaultRequestHeaders.Clear();
     }
 
-    public async Task SyncOrderAsync(string kaspiCode, string authToken)
+    public async Task SyncOrderAsync(string kaspiCode, string authToken, string id)
     {
-        var orderUrl = $"https://kaspi.kz/shop/api/v2/orders?filter[orders][code]={kaspiCode}";
-        _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.Add("X-Auth-Token", authToken);
-        _httpClient.DefaultRequestHeaders.Add("ContentType", "application/vnd.api+json");
-
-        var orderResponse = await _httpClient.GetAsync(orderUrl);
-        orderResponse.EnsureSuccessStatusCode();
-        var orderJson = await orderResponse.Content.ReadAsStringAsync();
-        var orderData = JsonSerializer.Deserialize<JsonElement>(orderJson);
-
-        string orderId = orderData.GetProperty("data")[0].GetProperty("id").GetString();
-
-        var entriesUrl = $"https://kaspi.kz/shop/api/v2/orders/{orderId}/entries";
+        var entriesUrl = $"https://kaspi.kz/shop/api/v2/orders/{id}/entries";
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Add("X-Auth-Token", authToken);
         _httpClient.DefaultRequestHeaders.Add("ContentType", "application/vnd.api+json");
@@ -95,8 +83,7 @@ public class OrderSyncService
                 Console.WriteLine(ex.Message);
             }
         }
-
-
+        
         await context.SaveChangesAsync();
     }
 }
