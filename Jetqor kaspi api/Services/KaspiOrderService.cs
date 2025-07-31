@@ -1,4 +1,5 @@
 ﻿using Jetqor_kaspi_api.Enum;
+using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 
 namespace Jetqor_kaspi_api.Services;
@@ -85,7 +86,10 @@ public class KaspiOrderService
                 KaspiStatus kaspiStatus = MapKaspiStatus(stateStr);
 
                 string customerId = (string)order["relationships"]?["user"]?["data"]?["id"];
-                string customerName = included.ContainsKey(customerId) ? included[customerId].name : "";
+                
+                var user = db.Users.FirstOrDefault(u => u.kaspi_key == token);
+                string customerName = user.name;
+                
                 string customerPhone = included.ContainsKey(customerId) ? included[customerId].phone : "";
 
                 var newOrder = new Order

@@ -80,7 +80,6 @@ public class OrderSyncService
                 }
                 else
                 {
-                    // Обновим количество, если нужно
                     existingOrderProduct.count = quantity;
                     context.OrderProducts.Update(existingOrderProduct);
                 }
