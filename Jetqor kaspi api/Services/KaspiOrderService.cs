@@ -72,7 +72,7 @@ public class KaspiOrderService
                 string code = attributes["code"].ToObject<string>();                
                 string id = order["id"].ToObject<string>();                
                 
-                await _orderSyncService.SyncOrderAsync(code, token);
+                await _orderSyncService.SyncOrderAsync(code, token, id);
                 
                 var kaspiCode = (string)order["attributes"]?["code"];
                 if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
