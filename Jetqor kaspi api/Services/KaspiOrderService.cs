@@ -90,7 +90,8 @@ public class KaspiOrderService
                 string customerName = user.name;
                 
                 string customerPhone = included.ContainsKey(customerId) ? included[customerId].phone : "";
-
+                
+                
                 var newOrder = new Order
                 {
                     Id = newId,
