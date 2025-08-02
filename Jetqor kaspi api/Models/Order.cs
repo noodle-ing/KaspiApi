@@ -23,6 +23,7 @@ public class Order
     public string customer_phone { get; set; }
     public string customer_name { get; set; }
     public int express { get; set; }
+    public int? storage_id { get; set; }
     
     public ICollection<OrderProduct> OrderProducts { get; set; }
 }

@@ -9,6 +9,7 @@ public class KaspiOrderService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly OrderSyncService _orderSyncService;
+    private readonly StorageSyncService _storageSyncService;
 
     public KaspiOrderService(
         IServiceScopeFactory scopeFactory,
@@ -90,7 +91,21 @@ public class KaspiOrderService
                 string customerName = user.name;
                 
                 string customerPhone = included.ContainsKey(customerId) ? included[customerId].phone : "";
+                var storageId = await _storageSyncService.FindStorageAsync(code, kaspiCode, token);
                 
+                // if (storageId == null)
+                // {
+                //     Console.WriteLine("[WARNING] Storage not found, skipping...");
+                //     return; // или continue, или throw, в зависимости от логики
+                // }
+                //
+                // var storage = await _context.Storages.FindAsync(storageId.Value);
+                // if (storage == null)
+                // {
+                //     Console.WriteLine("[ERROR] Storage with ID not found in DB!");
+                //     return;
+                // }
+
                 
                 var newOrder = new Order
                 {
@@ -105,7 +120,8 @@ public class KaspiOrderService
                     delivery_cost = (int?)order["attributes"]?["deliveryCost"] ?? 0,
                     express = (int?)order["attributes"]?["express"] ?? 0,
                     customer_name = customerName,
-                    customer_phone = customerPhone
+                    customer_phone = customerPhone,
+                    storage_id = storageId.HasValue ? storageId.Value : null
                 };
 
                 db.Orders.Add(newOrder);
