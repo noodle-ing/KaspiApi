@@ -13,11 +13,12 @@ public class KaspiOrderService
 
     public KaspiOrderService(
         IServiceScopeFactory scopeFactory,
-        IHttpClientFactory httpClientFactory, OrderSyncService orderSyncService)
+        IHttpClientFactory httpClientFactory, OrderSyncService orderSyncService, StorageSyncService storageSyncService)
     {
         _scopeFactory = scopeFactory;
         _httpClientFactory = httpClientFactory;
         _orderSyncService = orderSyncService;
+        _storageSyncService = storageSyncService;
     }
 
     public async Task CheckAndSaveOrdersOnceAsync(string token)
