@@ -45,7 +45,7 @@ public class KaspiOrderService
                       $"?page[number]=0&page[size]=100" +
                       $"&filter[orders][creationDate][$ge]={startTimestamp}" +
                       $"&filter[orders][creationDate][$le]={endTimestamp}" +
-                      $"&filter[orders][state]=ARCHIVE" +
+                      $"&filter[orders][state]=PICKUP" +
                       $"&include[orders]=user";
 
             var response = await client.GetAsync(url);
@@ -94,19 +94,6 @@ public class KaspiOrderService
                 string customerPhone = included.ContainsKey(customerId) ? included[customerId].phone : "";
                 var storageId = await _storageSyncService.FindStorageAsync(code, kaspiCode, token);
                 
-                // if (storageId == null)
-                // {
-                //     Console.WriteLine("[WARNING] Storage not found, skipping...");
-                //     return; // или continue, или throw, в зависимости от логики
-                // }
-                //
-                // var storage = await _context.Storages.FindAsync(storageId.Value);
-                // if (storage == null)
-                // {
-                //     Console.WriteLine("[ERROR] Storage with ID not found in DB!");
-                //     return;
-                // }
-
                 
                 var newOrder = new Order
                 {
@@ -128,7 +115,6 @@ public class KaspiOrderService
                 db.Orders.Add(newOrder);
                 await db.SaveChangesAsync();
                 
-                // Синхронизируем детали заказа ПОСЛЕ его создания в базе
                 try
                 {
                     await _orderSyncService.SyncOrderAsync(code, token, id);
@@ -170,13 +156,13 @@ public class KaspiOrderService
     {
         return value.ToLower() switch
         {
-            "APPROVED_BY_BANK" => Status.assembly,
+            "APPROVED_BY_BANK" => Status.packaging,
             "ACCEPTED_BY_MERCHANT" => Status.assembly,
             "COMPLETED" => Status.completed,
             "CANCELLED" => Status.cancelled,
             "CANCELLING" => Status.cancelled,
-            "KASPI_DELIVERY_RETURN_REQUESTED" => Status.cancelled,
-            "RETURNED" => Status.cancelled,
+            "KASPI_DELIVERY_RETURN_REQUESTED" => Status.return_request,
+            "RETURNED" => Status.Return,
             _ => Status.assembly
         };
     }

@@ -1,4 +1,6 @@
-﻿namespace Jetqor_kaspi_api.Enum;
+﻿using System.Runtime.Serialization;
+
+namespace Jetqor_kaspi_api.Enum;
 
 public enum Status
 {
@@ -7,5 +9,10 @@ public enum Status
     assembly,
     indelivery,
     waiting,
-    packed
+    packed,
+    packaging,
+    [EnumMember(Value = "return")]
+    Return,
+    return_request,
+    
 }
