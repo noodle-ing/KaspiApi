@@ -10,15 +10,17 @@ public class KaspiOrderService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly OrderSyncService _orderSyncService;
     private readonly StorageSyncService _storageSyncService;
+    private readonly OrderStatusUpdateService _orderStatusUpdateService;
 
     public KaspiOrderService(
         IServiceScopeFactory scopeFactory,
-        IHttpClientFactory httpClientFactory, OrderSyncService orderSyncService, StorageSyncService storageSyncService)
+        IHttpClientFactory httpClientFactory, OrderSyncService orderSyncService, StorageSyncService storageSyncService, OrderStatusUpdateService orderStatusUpdateService)
     {
         _scopeFactory = scopeFactory;
         _httpClientFactory = httpClientFactory;
         _orderSyncService = orderSyncService;
         _storageSyncService = storageSyncService;
+        _orderStatusUpdateService = orderStatusUpdateService;
     }
 
     public async Task CheckAndSaveOrdersOnceAsync(string token)
@@ -45,7 +47,7 @@ public class KaspiOrderService
                       $"?page[number]=0&page[size]=100" +
                       $"&filter[orders][creationDate][$ge]={startTimestamp}" +
                       $"&filter[orders][creationDate][$le]={endTimestamp}" +
-                      $"&filter[orders][state]=PICKUP" +
+                      $"&filter[orders][state]=KASPI_DELIVERY" +
                       $"&include[orders]=user";
 
             var response = await client.GetAsync(url);
@@ -74,6 +76,8 @@ public class KaspiOrderService
                 string code = attributes["code"].ToObject<string>();                
                 string id = order["id"].ToObject<string>();
                 var kaspiCode = (string)order["attributes"]?["code"];
+                
+                _orderStatusUpdateService.UpdateOrderStatusAsync(id, token);
                 if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
                 {
                     skippedOrders++;
@@ -157,7 +161,7 @@ public class KaspiOrderService
         return value.ToLower() switch
         {
             "APPROVED_BY_BANK" => Status.packaging,
-            "ACCEPTED_BY_MERCHANT" => Status.assembly,
+            "ACCEPTED_BY_MERCHANT" => Status.packaging,
             "COMPLETED" => Status.completed,
             "CANCELLED" => Status.cancelled,
             "CANCELLING" => Status.cancelled,
