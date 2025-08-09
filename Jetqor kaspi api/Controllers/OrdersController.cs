@@ -20,4 +20,15 @@ public class OrdersController : ControllerBase
         await _orderService.CheckAndSaveOrdersOnceAsync(token);
         return Ok(new { message = "Orders synced" });
     }
+
+    [HttpPost("getconsignment")]
+    public async Task<IActionResult> GetConsignment([FromHeader(Name = "X-Auth-Token")] string token, string orderId)
+    {
+        var result = await _orderService.GetConsignment(token, orderId);
+        if (result == "Error occurred")
+        {
+            return BadRequest("Error occurred");
+        }
+        return Ok(result);
+    }
 }

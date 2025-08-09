@@ -1,4 +1,5 @@
-﻿using Jetqor_kaspi_api.Enum;
+﻿using System.Text.Json;
+using Jetqor_kaspi_api.Enum;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 
@@ -139,6 +140,33 @@ public class KaspiOrderService
             throw;
         }
         
+    }
+
+    public async Task<string> GetConsignment(string token, string orderId)
+    {
+        using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("X-Auth-Token", token);
+        client.DefaultRequestHeaders.Add("Accept", "application/vnd.api+json");
+
+        var url = $"https://kaspi.kz/shop/api/v2/orders?filter[orders][code]={orderId}";
+        var response = await client.GetAsync(url);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var json = await response.Content.ReadAsStringAsync();
+            using JsonDocument doc = JsonDocument.Parse(json);
+            var waybill = doc.RootElement.GetProperty("data")[0].GetProperty("attributes").GetProperty("kaspiDelivery")
+                .GetProperty("waybill").GetString();
+            if (waybill != null)
+            {
+                return waybill;
+            }
+            return "Error occurred";
+        }
+        else
+        {
+            return "Error occurred";
+        }
     }
 
     private KaspiStatus MapKaspiStatus(string value)
