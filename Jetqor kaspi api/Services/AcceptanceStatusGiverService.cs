@@ -6,12 +6,12 @@ using Newtonsoft.Json;
 
 namespace Jetqor_kaspi_api.Services
 {
-    public class OrderStatusUpdateService
+    public class AcceptanceStatusGiverService
     {
         private readonly HttpClient _httpClient;
         private const string KaspiApiUrl = "https://kaspi.kz/shop/api/v2/orders";
 
-        public OrderStatusUpdateService(HttpClient httpClient)
+        public AcceptanceStatusGiverService(HttpClient httpClient)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }

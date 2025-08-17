@@ -11,17 +11,17 @@ public class KaspiOrderService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly OrderSyncService _orderSyncService;
     private readonly StorageSyncService _storageSyncService;
-    private readonly OrderStatusUpdateService _orderStatusUpdateService;
+    private readonly AcceptanceStatusGiverService _acceptanceStatusGiverService;
 
     public KaspiOrderService(
         IServiceScopeFactory scopeFactory,
-        IHttpClientFactory httpClientFactory, OrderSyncService orderSyncService, StorageSyncService storageSyncService, OrderStatusUpdateService orderStatusUpdateService)
+        IHttpClientFactory httpClientFactory, OrderSyncService orderSyncService, StorageSyncService storageSyncService, AcceptanceStatusGiverService acceptanceStatusGiverService)
     {
         _scopeFactory = scopeFactory;
         _httpClientFactory = httpClientFactory;
         _orderSyncService = orderSyncService;
         _storageSyncService = storageSyncService;
-        _orderStatusUpdateService = orderStatusUpdateService;
+        _acceptanceStatusGiverService = acceptanceStatusGiverService;
     }
 
     public async Task CheckAndSaveOrdersOnceAsync()
@@ -87,7 +87,9 @@ public class KaspiOrderService
                     string id = order["id"].ToObject<string>();
                     var kaspiCode = (string)order["attributes"]?["code"];
                     
-                    _orderStatusUpdateService.UpdateOrderStatusAsync(id, token);
+                    string statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
+
+                    _acceptanceStatusGiverService.UpdateOrderStatusAsync(id, token);
                     if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
                     {
                         skippedOrders++;
@@ -95,7 +97,6 @@ public class KaspiOrderService
                     }
 
                     int newId = db.Orders.OrderByDescending(o => o.Id).Select(o => o.Id).FirstOrDefault() + 1;
-                    string statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
 
                     Status status = MapOrderStatus(statusStr);
                     KaspiStatus kaspiStatus = MapKaspiStatus(statusStr);

@@ -25,7 +25,8 @@ builder.Services.AddScoped<KaspiOrderService>();
 builder.Services.AddScoped<ProductSyncService>();
 builder.Services.AddScoped<OrderSyncService>();
 builder.Services.AddScoped<StorageSyncService>();
-builder.Services.AddScoped<OrderStatusUpdateService>();
+builder.Services.AddScoped<AcceptanceStatusGiverService>();
+builder.Services.AddHostedService<TimedHostedService>();
 builder.Services.AddControllers();
 
 builder.Services.AddDbContext<AppDbContext>(options =>

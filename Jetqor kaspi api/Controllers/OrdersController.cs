@@ -14,12 +14,12 @@ public class OrdersController : ControllerBase
         _orderService = orderService;
     }
 
-    [HttpPost("sync")]
-    public async Task<IActionResult> SyncOrders()
-    {
-        await _orderService.CheckAndSaveOrdersOnceAsync();
-        return Ok(new { message = "Orders synced" });
-    }
+    // [HttpPost("sync")]
+    // public async Task<IActionResult> SyncOrders()
+    // {
+    //     await _orderService.CheckAndSaveOrdersOnceAsync();
+    //     return Ok(new { message = "Orders synced" });
+    // }
 
     [HttpPost("getconsignment")]
     public async Task<IActionResult> GetConsignment(string orderId)
