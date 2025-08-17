@@ -15,16 +15,16 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost("sync")]
-    public async Task<IActionResult> SyncOrders([FromHeader(Name = "X-Auth-Token")] string token)
+    public async Task<IActionResult> SyncOrders()
     {
-        await _orderService.CheckAndSaveOrdersOnceAsync(token);
+        await _orderService.CheckAndSaveOrdersOnceAsync();
         return Ok(new { message = "Orders synced" });
     }
 
     [HttpPost("getconsignment")]
-    public async Task<IActionResult> GetConsignment([FromHeader(Name = "X-Auth-Token")] string token, string orderId)
+    public async Task<IActionResult> GetConsignment(string orderId)
     {
-        var result = await _orderService.GetConsignment(token, orderId);
+        var result = await _orderService.GetConsignment(orderId);
         if (result == "Error occurred")
         {
             return BadRequest("Error occurred");
