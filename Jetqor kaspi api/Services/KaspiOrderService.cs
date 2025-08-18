@@ -89,7 +89,7 @@ public class KaspiOrderService
                     
                     string statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
 
-                    _acceptanceStatusGiverService.UpdateOrderStatusAsync(id, token);
+                    // _acceptanceStatusGiverService.UpdateOrderStatusAsync(id, token);
                     if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
                     {
                         skippedOrders++;
