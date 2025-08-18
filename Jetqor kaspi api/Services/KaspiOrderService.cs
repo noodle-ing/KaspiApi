@@ -221,13 +221,13 @@ public class KaspiOrderService
     {
         return value.ToLowerInvariant() switch
         {
-            "approved_by_bank" => Status.packaging,
-            "accepted_by_merchant" => Status.packaging,
-            "completed" => Status.completed,
-            "cancelled" => Status.cancelled,
-            "cancelling" => Status.cancelled,
-            "kaspi_delivery_return_requested" => Status.return_request,
-            "returned" => Status.Return,
+            "APPROVED_BY_BANK" => Status.packaging,
+            "ACCEPTED_BY_MERCHANT" => Status.packaging,
+            "COMPLETED" => Status.completed,
+            "CANCELLED" => Status.cancelled,
+            "CANCELLING" => Status.cancelled,
+            "KASPI_DELIVERY_RETURN_REQUESTED" => Status.return_request,
+            "RETURNED" => Status.Return,
             _ => Status.assembly
         };
     }
