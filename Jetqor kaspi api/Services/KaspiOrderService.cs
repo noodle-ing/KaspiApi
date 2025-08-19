@@ -89,7 +89,7 @@ public class KaspiOrderService
                     
                     string statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
 
-                    // _acceptanceStatusGiverService.UpdateOrderStatusAsync(id, token);
+                    // await _acceptanceStatusGiverService.UpdateOrderStatusAsync(id, token, );
                     if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
                     {
                         skippedOrders++;
@@ -219,7 +219,7 @@ public class KaspiOrderService
 
     private Status MapOrderStatus(string value)
     {
-        return value.ToLowerInvariant() switch
+        return value switch
         {
             "APPROVED_BY_BANK" => Status.packaging,
             "ACCEPTED_BY_MERCHANT" => Status.packaging,

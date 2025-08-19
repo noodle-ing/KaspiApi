@@ -16,7 +16,7 @@ namespace Jetqor_kaspi_api.Services
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }
 
-        public async Task<bool> UpdateOrderStatusAsync(string orderId, string token)
+        public async Task<bool> UpdateOrderStatusAsync(string orderId, string token, string status)
         {
             if (string.IsNullOrWhiteSpace(orderId))
             {
