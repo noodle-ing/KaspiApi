@@ -26,6 +26,8 @@ public class KaspiOrderService
 
     public async Task CheckAndSaveOrdersOnceAsync()
     {
+        await UpdateOldOrdersStatusesAsync();
+        
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         
@@ -89,7 +91,7 @@ public class KaspiOrderService
                     
                     string statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
 
-                    // await _acceptanceStatusGiverService.UpdateOrderStatusAsync(id, token, );
+                    // await _acceptanceStatusGiverService.UpdateOrderStatusAsync(id, token);
                     if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
                     {
                         skippedOrders++;
@@ -231,4 +233,82 @@ public class KaspiOrderService
             _ => Status.assembly
         };
     }
+    
+    
+public async Task UpdateOldOrdersStatusesAsync()
+{
+    using var scope = _scopeFactory.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    var usersWithTokens = await db.Users
+        .Where(u => u.kaspi_key != null)
+        .ToListAsync();
+
+    var kazakhstanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tashkent");
+
+    var end = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, kazakhstanTimeZone);
+    var start = end.AddDays(-14); // <-- вместо AddMonths(-1)
+
+    long startTimestamp = new DateTimeOffset(start, kazakhstanTimeZone.GetUtcOffset(start)).ToUnixTimeMilliseconds();
+    long endTimestamp = new DateTimeOffset(end, kazakhstanTimeZone.GetUtcOffset(end)).ToUnixTimeMilliseconds();
+
+    int updatedOrders = 0, skippedOrders = 0;
+
+    foreach (var user in usersWithTokens)
+    {
+        var token = user.kaspi_key;
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Add("X-Auth-Token", token);
+
+            var url = $"https://kaspi.kz/shop/api/v2/orders" +
+                      $"?page[number]=0&page[size]=100" +
+                      $"&filter[orders][creationDate][$ge]={startTimestamp}" +
+                      $"&filter[orders][creationDate][$le]={endTimestamp}" +
+                      $"&include[orders]=user";
+
+            var response = await client.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync();
+            var obj = JObject.Parse(json);
+
+            foreach (var order in obj["data"])
+            {
+                var kaspiCode = (string)order["attributes"]?["code"];
+                var statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
+
+                var dbOrder = await db.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
+                if (dbOrder == null) continue; // заказа нет в базе → пропускаем
+
+                var newKaspiStatus = MapKaspiStatus(statusStr);
+                var newStatus = MapOrderStatus(statusStr);
+
+                if (dbOrder.kaspi_status != newKaspiStatus || dbOrder.status != newStatus)
+                {
+                    dbOrder.kaspi_status = newKaspiStatus;
+                    dbOrder.status = newStatus;
+                    dbOrder.updated_at = DateTime.UtcNow;
+
+                    await db.SaveChangesAsync();
+                    updatedOrders++;
+                }
+                else
+                {
+                    skippedOrders++;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] Failed for token of user {user.id}: {ex.Message}");
+        }
+    }
+
+    Console.WriteLine($"[SUMMARY] Status update done. Updated {updatedOrders}, skipped {skippedOrders}.");
+}
+
 }
