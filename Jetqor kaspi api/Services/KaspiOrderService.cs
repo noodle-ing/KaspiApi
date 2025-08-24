@@ -105,7 +105,9 @@ public class KaspiOrderService
 
                     string customerId = (string)order["relationships"]?["user"]?["data"]?["id"];
                     
-                    string customerName = included.ContainsKey(customerId) ? included[customerId].name : "";
+                    string customerName = db.Users.Where(u => u.kaspi_key == token)
+                        .Select( u => u.name).FirstOrDefault() ?? "";
+                    
                     string customerPhone = included.ContainsKey(customerId) ? included[customerId].phone : "";
                     var storageId = await _storageSyncService.FindStorageAsync(code, kaspiCode, token);
                     
@@ -247,7 +249,7 @@ public async Task UpdateOldOrdersStatusesAsync()
     var kazakhstanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tashkent");
 
     var end = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, kazakhstanTimeZone);
-    var start = end.AddDays(-14); // <-- вместо AddMonths(-1)
+    var start = end.AddDays(-20); 
 
     long startTimestamp = new DateTimeOffset(start, kazakhstanTimeZone.GetUtcOffset(start)).ToUnixTimeMilliseconds();
     long endTimestamp = new DateTimeOffset(end, kazakhstanTimeZone.GetUtcOffset(end)).ToUnixTimeMilliseconds();
@@ -282,7 +284,7 @@ public async Task UpdateOldOrdersStatusesAsync()
                 var statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
 
                 var dbOrder = await db.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
-                if (dbOrder == null) continue; // заказа нет в базе → пропускаем
+                if (dbOrder == null) continue; 
 
                 var newKaspiStatus = MapKaspiStatus(statusStr);
                 var newStatus = MapOrderStatus(statusStr);
@@ -309,6 +311,6 @@ public async Task UpdateOldOrdersStatusesAsync()
     }
 
     Console.WriteLine($"[SUMMARY] Status update done. Updated {updatedOrders}, skipped {skippedOrders}.");
-}
+    }
 
 }
