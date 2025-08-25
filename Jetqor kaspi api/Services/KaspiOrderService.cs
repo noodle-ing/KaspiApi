@@ -196,8 +196,7 @@ public class KaspiOrderService
                 .GetProperty("kaspiDelivery")
                 .GetProperty("waybill")
                 .GetString();
-
-            return waybill ?? "Waybill not found";
+            return waybill ?? "Waybill not found, firstly move order from packaging to delivery";
         }
         catch
         {
