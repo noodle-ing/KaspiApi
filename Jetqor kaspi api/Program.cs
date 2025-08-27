@@ -21,6 +21,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
+builder.Services.AddScoped<ReturnProductService>();
 builder.Services.AddScoped<KaspiOrderService>();
 builder.Services.AddScoped<ProductSyncService>();
 builder.Services.AddScoped<OrderSyncService>();

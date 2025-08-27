@@ -21,7 +21,7 @@ public class StorageSyncService
         _scopeFactory = scopeFactory;
     }
 
-    public async Task<int?> FindStorageAsync(string orderId, string kaspiCode, string token)
+    public async Task<int> FindStorageAsync(string orderId, string kaspiCode, string token)
     {
         var orderUrl = $"https://kaspi.kz/shop/api/v2/orders?filter[orders][code]={kaspiCode}";
         _httpClient.DefaultRequestHeaders.Clear();
@@ -38,7 +38,7 @@ public class StorageSyncService
             if (!entriesData.TryGetProperty("data", out var dataArray) || dataArray.ValueKind != JsonValueKind.Array || dataArray.GetArrayLength() == 0)
             {
                 Console.WriteLine($"[ERROR] No order data found for order {kaspiCode}");
-                return null;
+                return 0;
             }
 
             var orderAttributes = dataArray[0].GetProperty("attributes");
@@ -51,7 +51,7 @@ public class StorageSyncService
             if (string.IsNullOrEmpty(city) || string.IsNullOrEmpty(streetName) || string.IsNullOrEmpty(originAddressId))
             {
                 Console.WriteLine($"[ERROR] Invalid address data for order {kaspiCode}");
-                return null;
+                return 0;
             }
 
             var inputTokens = NormalizeAddress(streetName).Concat(NormalizeAddress(streetNumber)).ToList();
@@ -83,12 +83,12 @@ public class StorageSyncService
             }
 
             Console.WriteLine($"[WARNING] No matching warehouse found for order {kaspiCode}, address {originAddressId}");
-            return null;
+            return 0;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[ERROR] Error processing order {kaspiCode}: {ex.Message}");
-            return null;
+            return 0;
         }
     }
 

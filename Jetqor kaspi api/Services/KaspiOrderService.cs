@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using Jetqor_kaspi_api.Enum;
+using Jetqor_kaspi_api.Models;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Linq;
 
@@ -12,16 +13,20 @@ public class KaspiOrderService
     private readonly OrderSyncService _orderSyncService;
     private readonly StorageSyncService _storageSyncService;
     private readonly AcceptanceStatusGiverService _acceptanceStatusGiverService;
+    private readonly ReturnProductService _returnProductService;
 
     public KaspiOrderService(
         IServiceScopeFactory scopeFactory,
-        IHttpClientFactory httpClientFactory, OrderSyncService orderSyncService, StorageSyncService storageSyncService, AcceptanceStatusGiverService acceptanceStatusGiverService)
+        IHttpClientFactory httpClientFactory, OrderSyncService orderSyncService, 
+        StorageSyncService storageSyncService, AcceptanceStatusGiverService acceptanceStatusGiverService,
+        ReturnProductService returnProductService)
     {
         _scopeFactory = scopeFactory;
         _httpClientFactory = httpClientFactory;
         _orderSyncService = orderSyncService;
         _storageSyncService = storageSyncService;
         _acceptanceStatusGiverService = acceptanceStatusGiverService;
+        _returnProductService = returnProductService;
     }
 
     public async Task CheckAndSaveOrdersOnceAsync()
@@ -88,9 +93,7 @@ public class KaspiOrderService
                     string code = attributes["code"].ToObject<string>();                
                     string id = order["id"].ToObject<string>();
                     var kaspiCode = (string)order["attributes"]?["code"];
-                    
                     string statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
-
                     // await _acceptanceStatusGiverService.UpdateOrderStatusAsync(id, token);
                     if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
                     {
@@ -109,8 +112,9 @@ public class KaspiOrderService
                         .Select( u => u.name).FirstOrDefault() ?? "";
                     
                     string customerPhone = included.ContainsKey(customerId) ? included[customerId].phone : "";
-                    var storageId = await _storageSyncService.FindStorageAsync(code, kaspiCode, token);
+                    int storageId = await _storageSyncService.FindStorageAsync(code, kaspiCode, token);
                     
+                   
                     
                     var newOrder = new Order
                     {
@@ -126,7 +130,7 @@ public class KaspiOrderService
                         express = (int?)order["attributes"]?["express"] ?? 0,
                         customer_name = customerName,
                         customer_phone = customerPhone,
-                        storage_id = storageId.HasValue ? storageId.Value : null
+                        storage_id = storageId
                     };
 
                     db.Orders.Add(newOrder);
@@ -198,9 +202,9 @@ public class KaspiOrderService
                 .GetString();
             return waybill ?? "Waybill not found, firstly move order from packaging to delivery";
         }
-        catch
+        catch(Exception ex)
         {
-            return "Error occurred";
+            return $"Error occurred: {ex.Message}";
         }
     }
 
@@ -234,9 +238,9 @@ public class KaspiOrderService
             _ => Status.assembly
         };
     }
-    
-    
-public async Task UpdateOldOrdersStatusesAsync()
+
+
+    private async Task UpdateOldOrdersStatusesAsync()
 {
     using var scope = _scopeFactory.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -248,7 +252,7 @@ public async Task UpdateOldOrdersStatusesAsync()
     var kazakhstanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tashkent");
 
     var end = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, kazakhstanTimeZone);
-    var start = end.AddDays(-20); 
+    var start = end.AddDays(-14); 
 
     long startTimestamp = new DateTimeOffset(start, kazakhstanTimeZone.GetUtcOffset(start)).ToUnixTimeMilliseconds();
     long endTimestamp = new DateTimeOffset(end, kazakhstanTimeZone.GetUtcOffset(end)).ToUnixTimeMilliseconds();
@@ -258,7 +262,7 @@ public async Task UpdateOldOrdersStatusesAsync()
     foreach (var user in usersWithTokens)
     {
         var token = user.kaspi_key;
-
+        
         try
         {
             var client = _httpClientFactory.CreateClient();
@@ -269,6 +273,7 @@ public async Task UpdateOldOrdersStatusesAsync()
                       $"?page[number]=0&page[size]=100" +
                       $"&filter[orders][creationDate][$ge]={startTimestamp}" +
                       $"&filter[orders][creationDate][$le]={endTimestamp}" +
+                      $"&filter[orders][state]=KASPI_DELIVERY" +
                       $"&include[orders]=user";
 
             var response = await client.GetAsync(url);
@@ -281,12 +286,19 @@ public async Task UpdateOldOrdersStatusesAsync()
             {
                 var kaspiCode = (string)order["attributes"]?["code"];
                 var statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
+                string id = order["id"].ToObject<string>();
 
                 var dbOrder = await db.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
                 if (dbOrder == null) continue; 
 
                 var newKaspiStatus = MapKaspiStatus(statusStr);
                 var newStatus = MapOrderStatus(statusStr);
+                int storageId = await _storageSyncService.FindStorageAsync(kaspiCode, kaspiCode, token);
+
+                if (statusStr == "CANCELLED" || statusStr == "CANCELLING" || statusStr == "RETURNED")
+                {
+                    await _returnProductService.ReturnProduct(id, token, user.id);
+                }
 
                 if (dbOrder.kaspi_status != newKaspiStatus || dbOrder.status != newStatus)
                 {
