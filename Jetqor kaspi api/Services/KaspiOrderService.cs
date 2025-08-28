@@ -64,7 +64,6 @@ public class KaspiOrderService
                           $"?page[number]=0&page[size]=100" +
                           $"&filter[orders][creationDate][$ge]={startTimestamp}" +
                           $"&filter[orders][creationDate][$le]={endTimestamp}" +
-                          $"&filter[orders][state]=KASPI_DELIVERY" +
                           $"&include[orders]=user";
 
                 var response = await client.GetAsync(url);
@@ -112,7 +111,7 @@ public class KaspiOrderService
                         .Select( u => u.name).FirstOrDefault() ?? "";
                     
                     string customerPhone = included.ContainsKey(customerId) ? included[customerId].phone : "";
-                    int storageId = await _storageSyncService.FindStorageAsync(code, kaspiCode, token);
+                    var storageId = await _storageSyncService.FindStorageAsync(code, kaspiCode, token);
                     
                    
                     
@@ -273,7 +272,6 @@ public class KaspiOrderService
                       $"?page[number]=0&page[size]=100" +
                       $"&filter[orders][creationDate][$ge]={startTimestamp}" +
                       $"&filter[orders][creationDate][$le]={endTimestamp}" +
-                      $"&filter[orders][state]=KASPI_DELIVERY" +
                       $"&include[orders]=user";
 
             var response = await client.GetAsync(url);
@@ -293,7 +291,6 @@ public class KaspiOrderService
 
                 var newKaspiStatus = MapKaspiStatus(statusStr);
                 var newStatus = MapOrderStatus(statusStr);
-                int storageId = await _storageSyncService.FindStorageAsync(kaspiCode, kaspiCode, token);
 
                 if (statusStr == "CANCELLED" || statusStr == "CANCELLING" || statusStr == "RETURNED")
                 {
