@@ -239,7 +239,7 @@ public class KaspiOrderService
     }
 
 
-    private async Task UpdateOldOrdersStatusesAsync()
+private async Task UpdateOldOrdersStatusesAsync()
 {
     using var scope = _scopeFactory.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -249,76 +249,81 @@ public class KaspiOrderService
         .ToListAsync();
 
     var kazakhstanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tashkent");
-
     var end = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, kazakhstanTimeZone);
-    var start = end.AddDays(-14); 
 
-    long startTimestamp = new DateTimeOffset(start, kazakhstanTimeZone.GetUtcOffset(start)).ToUnixTimeMilliseconds();
-    long endTimestamp = new DateTimeOffset(end, kazakhstanTimeZone.GetUtcOffset(end)).ToUnixTimeMilliseconds();
+    int[] intervals = { 3, 7, 14 };
 
     int updatedOrders = 0, skippedOrders = 0;
 
     foreach (var user in usersWithTokens)
     {
         var token = user.kaspi_key;
-        
-        try
+
+        foreach (var days in intervals)
         {
-            var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("X-Auth-Token", token);
+            var start = end.AddDays(-days);
 
-            var url = $"https://kaspi.kz/shop/api/v2/orders" +
-                      $"?page[number]=0&page[size]=100" +
-                      $"&filter[orders][creationDate][$ge]={startTimestamp}" +
-                      $"&filter[orders][creationDate][$le]={endTimestamp}" +
-                      $"&include[orders]=user";
+            long startTimestamp = new DateTimeOffset(start, kazakhstanTimeZone.GetUtcOffset(start)).ToUnixTimeMilliseconds();
+            long endTimestamp = new DateTimeOffset(end, kazakhstanTimeZone.GetUtcOffset(end)).ToUnixTimeMilliseconds();
 
-            var response = await client.GetAsync(url);
-            response.EnsureSuccessStatusCode();
-
-            var json = await response.Content.ReadAsStringAsync();
-            var obj = JObject.Parse(json);
-
-            foreach (var order in obj["data"])
+            try
             {
-                var kaspiCode = (string)order["attributes"]?["code"];
-                var statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
-                string id = order["id"].ToObject<string>();
+                var client = _httpClientFactory.CreateClient();
+                client.DefaultRequestHeaders.Clear();
+                client.DefaultRequestHeaders.Add("X-Auth-Token", token);
 
-                var dbOrder = await db.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
-                if (dbOrder == null) continue; 
+                var url = $"https://kaspi.kz/shop/api/v2/orders" +
+                          $"?page[number]=0&page[size]=100" +
+                          $"&filter[orders][creationDate][$ge]={startTimestamp}" +
+                          $"&filter[orders][creationDate][$le]={endTimestamp}" +
+                          $"&include[orders]=user";
 
-                var newKaspiStatus = MapKaspiStatus(statusStr);
-                var newStatus = MapOrderStatus(statusStr);
+                var response = await client.GetAsync(url);
+                response.EnsureSuccessStatusCode();
 
-                if (statusStr == "CANCELLED" || statusStr == "CANCELLING" || statusStr == "RETURNED")
+                var json = await response.Content.ReadAsStringAsync();
+                var obj = JObject.Parse(json);
+
+                foreach (var order in obj["data"])
                 {
-                    await _returnProductService.ReturnProduct(id, token, user.id);
-                }
+                    var kaspiCode = (string)order["attributes"]?["code"];
+                    var statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
+                    string id = order["id"].ToObject<string>();
 
-                if (dbOrder.kaspi_status != newKaspiStatus || dbOrder.status != newStatus)
-                {
-                    dbOrder.kaspi_status = newKaspiStatus;
-                    dbOrder.status = newStatus;
-                    dbOrder.updated_at = DateTime.UtcNow;
+                    var dbOrder = await db.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
+                    if (dbOrder == null) continue;
 
-                    await db.SaveChangesAsync();
-                    updatedOrders++;
-                }
-                else
-                {
-                    skippedOrders++;
+                    var newKaspiStatus = MapKaspiStatus(statusStr);
+                    var newStatus = MapOrderStatus(statusStr);
+
+                    if (statusStr == "CANCELLED" || statusStr == "CANCELLING" || statusStr == "RETURNED")
+                    {
+                        await _returnProductService.ReturnProduct(id, token, user.id);
+                    }
+
+                    if (dbOrder.kaspi_status != newKaspiStatus || dbOrder.status != newStatus)
+                    {
+                        dbOrder.kaspi_status = newKaspiStatus;
+                        dbOrder.status = newStatus;
+                        dbOrder.updated_at = DateTime.UtcNow;
+
+                        await db.SaveChangesAsync();
+                        updatedOrders++;
+                    }
+                    else
+                    {
+                        skippedOrders++;
+                    }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ERROR] Failed for token of user {user.id}: {ex.Message}");
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Failed for token of user {user.id}, interval {days} days: {ex.Message}");
+            }
         }
     }
 
     Console.WriteLine($"[SUMMARY] Status update done. Updated {updatedOrders}, skipped {skippedOrders}.");
-    }
+}
 
 }
