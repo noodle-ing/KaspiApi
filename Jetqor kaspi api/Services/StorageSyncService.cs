@@ -26,8 +26,7 @@ public class StorageSyncService
         var orderUrl = $"https://kaspi.kz/shop/api/v2/orders?filter[orders][code]={kaspiCode}";
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Add("X-Auth-Token", token);
-        _httpClient.DefaultRequestHeaders.Add("Content-Type", "application/vnd.api+json");
-
+        _httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.api+json");
         try
         {
             var entriesResponse = await _httpClient.GetAsync(orderUrl);
@@ -58,10 +57,12 @@ public class StorageSyncService
 
             var manualRules = new List<(List<string> tokens, int id)>
             {
+                (new List<string>{ "хаби", "халиуллина", "66", "11", "1" }, 18),
                 (new List<string>{ "чаплина", "71" }, 17),
-                (new List<string>{ "кенсаз" }, 16),
+                (new List<string>{ "кенсаз", "3", "1" }, 16),
                 (new List<string>{ "туйменбаева", "754" }, 15)
             };
+
 
             foreach (var rule in manualRules)
             {
