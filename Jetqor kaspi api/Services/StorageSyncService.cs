@@ -57,10 +57,9 @@ public class StorageSyncService
 
             var manualRules = new List<(List<string> tokens, int id)>
             {
-                (new List<string>{ "хаби", "халиуллина", "66", "11", "1" }, 18),
+                (new List<string>{ "хаби", "халиуллина", "66", "11", "1", "cтаница", "алматы" }, 15),
                 (new List<string>{ "чаплина", "71" }, 17),
-                (new List<string>{ "кенсаз", "3", "1" }, 16),
-                (new List<string>{ "туйменбаева", "754" }, 15)
+                (new List<string>{ "кенсаз", "3", "1"}, 16),
             };
 
 
