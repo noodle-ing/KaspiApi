@@ -31,7 +31,7 @@ public class KaspiOrderService
 
     public async Task CheckAndSaveOrdersOnceAsync()
     {
-       // await UpdateOldOrdersStatusesAsync();
+        await UpdateOldOrdersStatusesAsync();
         
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
