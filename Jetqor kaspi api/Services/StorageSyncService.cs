@@ -42,22 +42,31 @@ public class StorageSyncService
 
             var orderAttributes = dataArray[0].GetProperty("attributes");
             var originAddress = orderAttributes.GetProperty("originAddress");
+            var address = originAddress.GetProperty("address");
             var city = originAddress.GetProperty("city").GetProperty("name").GetString();
             var streetName = originAddress.GetProperty("address").GetProperty("streetName").GetString();
             var streetNumber = originAddress.GetProperty("address").GetProperty("streetNumber").GetString();
             var originAddressId = originAddress.GetProperty("id").GetString();
+            var building = address.TryGetProperty("building", out var buildingProp) 
+                ? buildingProp.GetString() 
+                : string.Empty;
+
 
             if (string.IsNullOrEmpty(city) || string.IsNullOrEmpty(streetName) || string.IsNullOrEmpty(originAddressId))
             {
                 Console.WriteLine($"[ERROR] Invalid address data for order {kaspiCode}");
                 return null;
             }
-
-            var inputTokens = NormalizeAddress(streetName).Concat(NormalizeAddress(streetNumber)).ToList();
-
+            
+            var inputTokens = NormalizeAddress(streetName)
+                .Concat(NormalizeAddress(streetNumber))
+                .Concat(NormalizeAddress(building))
+                .ToList();
+            
             var manualRules = new List<(List<string> tokens, int id)>
             {
-                (new List<string>{ "хаби", "халиуллина", "66", "11", "1", "cтаница", "алматы" }, 15),
+                (new List<string>{ "хаби", "халиуллина", "66", "11", "1", "станица", "алматы" }, 15),
+                (new List<string>{ "хаби", "халиуллина" }, 15),
                 (new List<string>{ "чаплина", "71" }, 17),
                 (new List<string>{ "кенсаз", "3", "1"}, 16),
             };
@@ -83,7 +92,7 @@ public class StorageSyncService
             }
 
             Console.WriteLine($"[WARNING] No matching warehouse found for order {kaspiCode}, address {originAddressId}");
-            return null; // теперь null, а не 0
+            return null; 
         }
         catch (Exception ex)
         {
@@ -96,12 +105,19 @@ public class StorageSyncService
     {
         if (string.IsNullOrWhiteSpace(input)) return new List<string>();
 
-        return input
+        var cleaned = input
             .ToLower()
+            .Replace("(", " ")
+            .Replace(")", " ")
             .Replace("\\", " ")
             .Replace("/", " ")
             .Replace("-", " ")
-            .Replace(",", " ")
+            .Replace(",", " ");
+
+        while (cleaned.Contains("  "))
+            cleaned = cleaned.Replace("  ", " ");
+
+        return cleaned
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Where(token => !StopWords.Contains(token))
             .ToList();

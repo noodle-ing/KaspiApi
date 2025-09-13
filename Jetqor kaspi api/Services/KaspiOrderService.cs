@@ -31,7 +31,7 @@ public class KaspiOrderService
 
     public async Task CheckAndSaveOrdersOnceAsync()
     {
-        await UpdateOldOrdersStatusesAsync();
+        //await UpdateOldOrdersStatusesAsync();
         
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -112,8 +112,12 @@ public class KaspiOrderService
                     
                     string customerPhone = included.ContainsKey(customerId) ? included[customerId].phone : "";
                     var storageId = await _storageSyncService.FindStorageAsync(code, kaspiCode, token);
-                    
-                   
+
+                    if (storageId == null)
+                    {
+                        Console.WriteLine($"[INFO] Order {kaspiCode} skipped — storage not found");
+                        return;
+                    }
                     
                     var newOrder = new Order
                     {
