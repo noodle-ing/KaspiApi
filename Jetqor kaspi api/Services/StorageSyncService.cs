@@ -74,7 +74,7 @@ public class StorageSyncService
 
             foreach (var rule in manualRules)
             {
-                if (rule.tokens.All(t => inputTokens.Contains(t)))
+                if (rule.tokens.Any(t => inputTokens.Contains(t)))
                     return rule.id;
             }
 

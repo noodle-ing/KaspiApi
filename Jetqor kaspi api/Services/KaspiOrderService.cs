@@ -31,7 +31,7 @@ public class KaspiOrderService
 
     public async Task CheckAndSaveOrdersOnceAsync()
     {
-        //await UpdateOldOrdersStatusesAsync();
+        await UpdateOldOrdersStatusesAsync();
         
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -265,7 +265,7 @@ private async Task UpdateOldOrdersStatusesAsync()
 
         foreach (var days in intervals)
         {
-            var start = end.AddDays(-days);
+            var start = end.AddDays(-7);
 
             long startTimestamp = new DateTimeOffset(start, kazakhstanTimeZone.GetUtcOffset(start)).ToUnixTimeMilliseconds();
             long endTimestamp = new DateTimeOffset(end, kazakhstanTimeZone.GetUtcOffset(end)).ToUnixTimeMilliseconds();
@@ -285,6 +285,7 @@ private async Task UpdateOldOrdersStatusesAsync()
                 var response = await client.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
+
                 var json = await response.Content.ReadAsStringAsync();
                 var obj = JObject.Parse(json);
 
@@ -296,9 +297,18 @@ private async Task UpdateOldOrdersStatusesAsync()
 
                     var dbOrder = await db.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
                     if (dbOrder == null) continue;
+                    var attributes = order["attributes"];
+                    string code = attributes["code"].ToObject<string>();                
 
                     var newKaspiStatus = MapKaspiStatus(statusStr);
                     var newStatus = MapOrderStatus(statusStr);
+                    
+                    if (dbOrder.storage_id == null)
+                    {
+                        db.Orders.Remove(dbOrder);
+                        await db.SaveChangesAsync();
+                        continue;
+                    }
 
                     if (statusStr == "CANCELLED" || statusStr == "CANCELLING" || statusStr == "RETURNED")
                     {
