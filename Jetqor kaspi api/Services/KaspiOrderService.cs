@@ -134,7 +134,7 @@ public class KaspiOrderService
                         express = (int?)order["attributes"]?["express"] ?? 0,
                         customer_name = customerName,
                         customer_phone = customerPhone,
-                        storage_id = storageId
+                        storage_id = storageId ?? throw new Exception($"Order {kaspiCode} has null storage_id!") 
                     };
 
                     db.Orders.Add(newOrder);
@@ -258,7 +258,7 @@ private async Task UpdateOldOrdersStatusesAsync()
 
     int[] intervals = { 3, 7, 14 };
 
-    int updatedOrders = 0, skippedOrders = 0;
+    int updatedOrders = 0, skippedOrders = 0, removedOrders = 0;
 
     foreach (var user in usersWithTokens)
     {
@@ -266,7 +266,7 @@ private async Task UpdateOldOrdersStatusesAsync()
 
         foreach (var days in intervals)
         {
-            var start = end.AddDays(-7);
+            var start = end.AddDays(days);
 
             long startTimestamp = new DateTimeOffset(start, kazakhstanTimeZone.GetUtcOffset(start)).ToUnixTimeMilliseconds();
             long endTimestamp = new DateTimeOffset(end, kazakhstanTimeZone.GetUtcOffset(end)).ToUnixTimeMilliseconds();
@@ -286,9 +286,10 @@ private async Task UpdateOldOrdersStatusesAsync()
                 var response = await client.GetAsync(url);
                 response.EnsureSuccessStatusCode();
 
-
                 var json = await response.Content.ReadAsStringAsync();
                 var obj = JObject.Parse(json);
+
+                var toRemove = new List<Order>();
 
                 foreach (var order in obj["data"])
                 {
@@ -298,16 +299,13 @@ private async Task UpdateOldOrdersStatusesAsync()
 
                     var dbOrder = await db.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
                     if (dbOrder == null) continue;
-                    var attributes = order["attributes"];
-                    string code = attributes["code"].ToObject<string>();                
 
                     var newKaspiStatus = MapKaspiStatus(statusStr);
                     var newStatus = MapOrderStatus(statusStr);
-                    
+
                     if (dbOrder.storage_id == null)
                     {
-                        db.Orders.Remove(dbOrder);
-                        await db.SaveChangesAsync();
+                        toRemove.Add(dbOrder);
                         continue;
                     }
 
@@ -322,7 +320,6 @@ private async Task UpdateOldOrdersStatusesAsync()
                         dbOrder.status = newStatus;
                         dbOrder.updated_at = DateTime.UtcNow;
 
-                        await db.SaveChangesAsync();
                         updatedOrders++;
                     }
                     else
@@ -330,6 +327,14 @@ private async Task UpdateOldOrdersStatusesAsync()
                         skippedOrders++;
                     }
                 }
+
+                if (toRemove.Any())
+                {
+                    db.Orders.RemoveRange(toRemove);
+                    removedOrders += toRemove.Count;
+                }
+
+                await db.SaveChangesAsync();
             }
             catch (Exception ex)
             {
@@ -338,7 +343,7 @@ private async Task UpdateOldOrdersStatusesAsync()
         }
     }
 
-    Console.WriteLine($"[SUMMARY] Status update done. Updated {updatedOrders}, skipped {skippedOrders}.");
+    Console.WriteLine($"[SUMMARY] Status update done. Updated {updatedOrders}, skipped {skippedOrders}, removed {removedOrders} orders without storage.");
 }
 
 }
