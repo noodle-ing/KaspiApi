@@ -116,7 +116,8 @@ public class KaspiOrderService
                     if (storageId == null)
                     {
                         Console.WriteLine($"[INFO] Order {kaspiCode} skipped — storage not found");
-                        return;
+                        skippedOrders++;
+                        continue;
                     }
                     
                     var newOrder = new Order
