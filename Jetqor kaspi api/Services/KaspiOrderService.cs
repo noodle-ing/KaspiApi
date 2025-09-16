@@ -31,6 +31,7 @@ public class KaspiOrderService
 
     public async Task CheckAndSaveOrdersOnceAsync()
     {
+        await RemoveOrdersWithNullStorageAsync();
         await UpdateOldOrdersStatusesAsync();
         
         using var scope = _scopeFactory.CreateScope();
@@ -344,6 +345,30 @@ private async Task UpdateOldOrdersStatusesAsync()
     }
 
     Console.WriteLine($"[SUMMARY] Status update done. Updated {updatedOrders}, skipped {skippedOrders}, removed {removedOrders} orders without storage.");
+}
+
+public async Task RemoveOrdersWithNullStorageAsync()
+{
+    using var scope = _scopeFactory.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    var badOrders = await db.Orders
+        .Where(o => o.storage_id == null)
+        .ToListAsync();
+
+    if (badOrders.Any())
+    {
+        Console.WriteLine($"[CLEANUP] Found {badOrders.Count} orders with null storage_id. Deleting...");
+
+        db.Orders.RemoveRange(badOrders);
+        await db.SaveChangesAsync();
+
+        Console.WriteLine("[CLEANUP] Cleanup finished.");
+    }
+    else
+    {
+        Console.WriteLine("[CLEANUP] No orders with null storage_id found.");
+    }
 }
 
 }
