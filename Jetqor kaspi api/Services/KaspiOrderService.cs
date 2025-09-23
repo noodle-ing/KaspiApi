@@ -95,6 +95,15 @@ public class KaspiOrderService
                     var kaspiCode = (string)order["attributes"]?["code"];
                     string statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
                     // await _acceptanceStatusGiverService.UpdateOrderStatusAsync(id, token);
+                    try
+                    {
+                        await _orderSyncService.SyncOrderAsync(code, token, id);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[WARNING] Failed to sync order details for {code}: {ex.Message}");
+                    }
+                    
                     if (db.Orders.Any(o => o.kaspi_code == kaspiCode))
                     {
                         skippedOrders++;

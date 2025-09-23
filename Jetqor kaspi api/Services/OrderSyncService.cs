@@ -32,14 +32,21 @@ public class OrderSyncService
 
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        //fix line
-        var order = await context.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
         
+        var order = await context.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
+        if (order == null)
+        {
+            Console.WriteLine($"[WARNING] Order {kaspiCode} not found in DB");
+            return;
+        }
+
         if (!entriesData.TryGetProperty("data", out var entryArray) || entryArray.ValueKind != JsonValueKind.Array || entryArray.GetArrayLength() == 0)
         {
             Console.WriteLine($"[INFO] No entries found for order {kaspiCode}");
             return;
         }
+
+        bool hasProducts = false; 
 
         foreach (var entry in entriesData.GetProperty("data").EnumerateArray())
         {
@@ -50,6 +57,12 @@ public class OrderSyncService
                 var articleCode = offer.GetProperty("code").GetString();
 
                 var product = await _productSyncService.SyncProductAsync(articleCode);
+                if (product == null)
+                {
+                    Console.WriteLine($"[INFO] Product {articleCode} not found, skipping");
+                    continue;
+                }
+
                 var quantity = attributes.GetProperty("quantity").GetInt32();
 
                 var existingOrderProduct = await context.OrderProducts
@@ -71,13 +84,23 @@ public class OrderSyncService
                     existingOrderProduct.count = quantity;
                     context.OrderProducts.Update(existingOrderProduct);
                 }
+
+                hasProducts = true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine($"[ERROR] Failed to sync product for order {kaspiCode}: {ex.Message}");
             }
         }
-        
-        await context.SaveChangesAsync();
+
+        if (hasProducts)
+        {
+            await context.SaveChangesAsync();
+            Console.WriteLine($"[INFO] Order {kaspiCode} synced successfully");
+        }
+        else
+        {
+            Console.WriteLine($"[INFO] Order {kaspiCode} skipped (no valid products)");
+        }
     }
 }
