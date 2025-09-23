@@ -250,6 +250,7 @@ private async Task UpdateOldOrdersStatusesAsync()
     using var scope = _scopeFactory.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+    
     var usersWithTokens = await db.Users
         .Where(u => u.kaspi_key != null)
         .ToListAsync();
@@ -260,7 +261,7 @@ private async Task UpdateOldOrdersStatusesAsync()
     int[] intervals = { 3, 7, 14 };
 
     int updatedOrders = 0, skippedOrders = 0, removedOrders = 0;
-
+    
     foreach (var user in usersWithTokens)
     {
         var token = user.kaspi_key;
@@ -271,7 +272,7 @@ private async Task UpdateOldOrdersStatusesAsync()
 
             long startTimestamp = new DateTimeOffset(start, kazakhstanTimeZone.GetUtcOffset(start)).ToUnixTimeMilliseconds();
             long endTimestamp = new DateTimeOffset(end, kazakhstanTimeZone.GetUtcOffset(end)).ToUnixTimeMilliseconds();
-
+            
             try
             {
                 var client = _httpClientFactory.CreateClient();
@@ -307,6 +308,23 @@ private async Task UpdateOldOrdersStatusesAsync()
                     if (dbOrder.storage_id == null)
                     {
                         toRemove.Add(dbOrder);
+                        continue;
+                    }
+                    
+                    if (int.TryParse(dbOrder.kaspi_code, out int kaspiCodeInt))
+                    {
+                        bool hasProducts = await db.OrderProducts
+                            .AnyAsync(op => op.orderId == kaspiCodeInt);
+
+                        if (!hasProducts)
+                        {
+                            db.Orders.Remove(dbOrder);
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        db.Orders.Remove(dbOrder);
                         continue;
                     }
 
@@ -347,28 +365,28 @@ private async Task UpdateOldOrdersStatusesAsync()
     Console.WriteLine($"[SUMMARY] Status update done. Updated {updatedOrders}, skipped {skippedOrders}, removed {removedOrders} orders without storage.");
 }
 
-public async Task RemoveOrdersWithNullStorageAsync()
-{
-    using var scope = _scopeFactory.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-    var badOrders = await db.Orders
-        .Where(o => o.storage_id == null)
-        .ToListAsync();
-
-    if (badOrders.Any())
+    public async Task RemoveOrdersWithNullStorageAsync()
     {
-        Console.WriteLine($"[CLEANUP] Found {badOrders.Count} orders with null storage_id. Deleting...");
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        db.Orders.RemoveRange(badOrders);
-        await db.SaveChangesAsync();
+        var badOrders = await db.Orders
+            .Where(o => o.storage_id == null)
+            .ToListAsync();
 
-        Console.WriteLine("[CLEANUP] Cleanup finished.");
+        if (badOrders.Any())
+        {
+            Console.WriteLine($"[CLEANUP] Found {badOrders.Count} orders with null storage_id. Deleting...");
+
+            db.Orders.RemoveRange(badOrders);
+            await db.SaveChangesAsync();
+
+            Console.WriteLine("[CLEANUP] Cleanup finished.");
+        }
+        else
+        {
+            Console.WriteLine("[CLEANUP] No orders with null storage_id found.");
+        }
     }
-    else
-    {
-        Console.WriteLine("[CLEANUP] No orders with null storage_id found.");
-    }
-}
 
 }
