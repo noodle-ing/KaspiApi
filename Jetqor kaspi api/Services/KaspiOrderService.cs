@@ -94,7 +94,7 @@ public class KaspiOrderService
                     string id = order["id"].ToObject<string>();
                     var kaspiCode = (string)order["attributes"]?["code"];
                     string statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
-                    // await _acceptanceStatusGiverService.UpdateOrderStatusAsync(id, token);
+                    
                     try
                     {
                         await _orderSyncService.SyncOrderAsync(code, token, id);
@@ -174,25 +174,27 @@ public class KaspiOrderService
         Console.WriteLine($"[SUMMARY] Done. Added {totalNewOrders} orders, skipped {totalSkippedOrders}.");
     }
 
-    public async Task<string> GetConsignment(string orderId)
+public async Task<string> GetConsignment(string orderId)
+{
+    using var scope = _scopeFactory.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    var order = await db.Orders.FirstOrDefaultAsync(o => o.kaspi_code == orderId);
+    if (order == null)
+        return "Order not found";
+
+    var customerName = order.customer_name;
+    if (string.IsNullOrEmpty(customerName))
+        return "Customer name is missing";
+
+    var user = await db.Users.FirstOrDefaultAsync(u => u.name == customerName);
+    if (user == null || string.IsNullOrEmpty(user.kaspi_key))
+        return "User or token not found";
+
+    var token = user.kaspi_key;
+
+    async Task<string?> FetchWaybillAsync()
     {
-        using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        var order = await db.Orders.FirstOrDefaultAsync(o => o.kaspi_code == orderId);
-        if (order == null)
-            return "Order not found";
-
-        var customerName = order.customer_name;
-        if (string.IsNullOrEmpty(customerName))
-            return "Customer name is missing";
-
-        var user = await db.Users.FirstOrDefaultAsync(u => u.name == customerName);
-        if (user == null || string.IsNullOrEmpty(user.kaspi_key))
-            return "User or token not found";
-
-        var token = user.kaspi_key;
-
         using var client = new HttpClient();
         client.DefaultRequestHeaders.Add("X-Auth-Token", token);
         client.DefaultRequestHeaders.Add("Accept", "application/vnd.api+json");
@@ -201,7 +203,7 @@ public class KaspiOrderService
         var response = await client.GetAsync(url);
 
         if (!response.IsSuccessStatusCode)
-            return "Error occurred";
+            return null;
 
         var json = await response.Content.ReadAsStringAsync();
         using JsonDocument doc = JsonDocument.Parse(json);
@@ -214,13 +216,26 @@ public class KaspiOrderService
                 .GetProperty("kaspiDelivery")
                 .GetProperty("waybill")
                 .GetString();
-            return waybill ?? "Waybill not found, firstly move order from packaging to delivery";
+
+            return string.IsNullOrWhiteSpace(waybill) ? null : waybill;
         }
-        catch(Exception ex)
+        catch
         {
-            return $"Error occurred: {ex.Message}";
+            return null;
         }
     }
+
+    var waybillResult = await FetchWaybillAsync();
+
+    if (waybillResult == null)
+    {
+        await _acceptanceStatusGiverService.UpdateOrderStatusAsync(order.Id ,token);
+
+        waybillResult = await FetchWaybillAsync();
+    }
+
+    return waybillResult ?? "Waybill not found, firstly move order from packaging to delivery";
+}
 
 
     private KaspiStatus MapKaspiStatus(string value)

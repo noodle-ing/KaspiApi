@@ -16,11 +16,11 @@ namespace Jetqor_kaspi_api.Services
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         }
 
-        public async Task<bool> UpdateOrderStatusAsync(string orderId, string token)
+        public async Task<bool> UpdateOrderStatusAsync(int orderId, string token)
         {
-            if (string.IsNullOrWhiteSpace(orderId))
+            if (orderId <= 0)
             {
-                Console.WriteLine("Error: Order ID cannot be null or empty.");
+                Console.WriteLine("Error: Order ID must be greater than zero.");
                 return false;
             }
 
@@ -40,7 +40,7 @@ namespace Jetqor_kaspi_api.Services
                     data = new
                     {
                         type = "orders",
-                        id = orderId,
+                        id = orderId.ToString(), 
                         attributes = new
                         {
                             status = "ASSEMBLE",
