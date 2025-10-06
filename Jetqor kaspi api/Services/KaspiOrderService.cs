@@ -95,6 +95,7 @@ public class KaspiOrderService
                     var kaspiCode = (string)order["attributes"]?["code"];
                     string statusStr = ((string)order["attributes"]?["status"])?.ToUpperInvariant() ?? "";
                     
+                    
                     try
                     {
                         await _orderSyncService.SyncOrderAsync(code, token, id);
@@ -144,7 +145,8 @@ public class KaspiOrderService
                         express = (int?)order["attributes"]?["express"] ?? 0,
                         customer_name = customerName,
                         customer_phone = customerPhone,
-                        storage_id = storageId ?? throw new Exception($"Order {kaspiCode} has null storage_id!") 
+                        storage_id = storageId ?? throw new Exception($"Order {kaspiCode} has null storage_id!"),
+                        kaspi_id = id 
                     };
 
                     db.Orders.Add(newOrder);

@@ -26,4 +26,5 @@ public class Order
     public int? storage_id { get; set; }
     
     public ICollection<OrderProduct> OrderProducts { get; set; }
+    public string? kaspi_id { get; set; }
 }

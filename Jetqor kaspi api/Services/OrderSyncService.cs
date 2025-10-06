@@ -74,7 +74,7 @@ public class OrderSyncService
                     {
                         orderId = order.Id,
                         productId = product.id,
-                        count = quantity
+                        count = quantity,
                     };
 
                     context.OrderProducts.Add(orderProduct);
