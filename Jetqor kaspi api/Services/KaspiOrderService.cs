@@ -281,7 +281,7 @@ private async Task UpdateOldOrdersStatusesAsync()
         .Where(u => u.kaspi_key != null)
         .ToListAsync();
 
-    var kazakhstanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Tashkent");
+    var kazakhstanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Almaty");
     var end = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, kazakhstanTimeZone);
 
     int[] intervals = { 3, 7, 14 };
@@ -294,7 +294,7 @@ private async Task UpdateOldOrdersStatusesAsync()
 
         foreach (var days in intervals)
         {
-            var start = end.AddDays(days);
+            var start = end.AddDays(-days);
 
             long startTimestamp = new DateTimeOffset(start, kazakhstanTimeZone.GetUtcOffset(start)).ToUnixTimeMilliseconds();
             long endTimestamp = new DateTimeOffset(end, kazakhstanTimeZone.GetUtcOffset(end)).ToUnixTimeMilliseconds();
@@ -327,7 +327,12 @@ private async Task UpdateOldOrdersStatusesAsync()
 
                     var dbOrder = await db.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
                     if (dbOrder == null) continue;
-
+                    
+                    dbOrder.kaspi_id = kaspiCode;
+                    db.Entry(dbOrder).Property(o => o.kaspi_id).IsModified = true;
+                    var result = await db.SaveChangesAsync();
+                    Console.WriteLine($"Saved {result} changes for user {user.id}");
+                    
                     var newKaspiStatus = MapKaspiStatus(statusStr);
                     var newStatus = MapOrderStatus(statusStr);
 
@@ -364,7 +369,6 @@ private async Task UpdateOldOrdersStatusesAsync()
                         dbOrder.kaspi_status = newKaspiStatus;
                         dbOrder.status = newStatus;
                         dbOrder.updated_at = DateTime.UtcNow;
-
                         updatedOrders++;
                     }
                     else
@@ -414,5 +418,7 @@ private async Task UpdateOldOrdersStatusesAsync()
             Console.WriteLine("[CLEANUP] No orders with null storage_id found.");
         }
     }
+    
+
 
 }
