@@ -142,11 +142,11 @@ public class KaspiOrderService
                         updated_at = DateTime.UtcNow,
                         total_price = (int?)order["attributes"]?["totalPrice"] ?? 0,
                         delivery_cost = (int?)order["attributes"]?["deliveryCost"] ?? 0,
-                        express = (int?)order["attributes"]?["express"] ?? 0,
+                        express = order["attributes"]?["express"]?.Value<bool?>() == true ? 1 : 0,
                         customer_name = customerName,
                         customer_phone = customerPhone,
                         storage_id = storageId ?? throw new Exception($"Order {kaspiCode} has null storage_id!"),
-                        kaspi_id = id 
+                        kaspi_id = id
                     };
 
                     db.Orders.Add(newOrder);
@@ -332,6 +332,8 @@ private async Task UpdateOldOrdersStatusesAsync()
                     db.Entry(dbOrder).Property(o => o.kaspi_id).IsModified = true;
                     var result = await db.SaveChangesAsync();
                     Console.WriteLine($"Saved {result} changes for user {user.id}");
+
+                    dbOrder.express = order["attributes"]?["express"]?.Value<bool?>() == true ? 1 : 0;
                     
                     var newKaspiStatus = MapKaspiStatus(statusStr);
                     var newStatus = MapOrderStatus(statusStr);
