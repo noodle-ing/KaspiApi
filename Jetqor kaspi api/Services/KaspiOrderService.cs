@@ -161,6 +161,16 @@ public class KaspiOrderService
                         Console.WriteLine($"[WARNING] Failed to sync order details for {code}: {ex.Message}");
                     }
                     
+                    // After syncing entries, ensure order has products; otherwise remove to avoid empty orders
+                    bool createdHasProducts = await db.OrderProducts.AnyAsync(op => op.orderId == newOrder.Id);
+                    if (!createdHasProducts)
+                    {
+                        Console.WriteLine($"[CLEANUP] Removing order {newOrder.kaspi_code} without products after sync");
+                        db.Orders.Remove(newOrder);
+                        await db.SaveChangesAsync();
+                        continue;
+                    }
+                    
                     newOrders++;
                 }
 
@@ -328,7 +338,7 @@ private async Task UpdateOldOrdersStatusesAsync()
                     var dbOrder = await db.Orders.FirstOrDefaultAsync(o => o.kaspi_code == kaspiCode);
                     if (dbOrder == null) continue;
                     
-                    dbOrder.kaspi_id = kaspiCode;
+                    dbOrder.kaspi_id = id;
                     db.Entry(dbOrder).Property(o => o.kaspi_id).IsModified = true;
                     var result = await db.SaveChangesAsync();
                     Console.WriteLine($"Saved {result} changes for user {user.id}");
@@ -344,18 +354,9 @@ private async Task UpdateOldOrdersStatusesAsync()
                         continue;
                     }
                     
-                    if (int.TryParse(dbOrder.kaspi_code, out int kaspiCodeInt))
-                    {
-                        bool hasProducts = await db.OrderProducts
-                            .AnyAsync(op => op.orderId == kaspiCodeInt);
-
-                        if (!hasProducts)
-                        {
-                            db.Orders.Remove(dbOrder);
-                            continue;
-                        }
-                    }
-                    else
+                    bool hasProducts = await db.OrderProducts
+                        .AnyAsync(op => op.orderId == dbOrder.Id);
+                    if (!hasProducts)
                     {
                         db.Orders.Remove(dbOrder);
                         continue;

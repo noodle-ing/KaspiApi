@@ -23,7 +23,7 @@ public class OrderSyncService
         var entriesUrl = $"https://kaspi.kz/shop/api/v2/orders/{id}/entries";
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Add("X-Auth-Token", authToken);
-        _httpClient.DefaultRequestHeaders.Add("ContentType", "application/vnd.api+json");
+        _httpClient.DefaultRequestHeaders.Add("Accept", "application/vnd.api+json");
 
         var entriesResponse = await _httpClient.GetAsync(entriesUrl);
         entriesResponse.EnsureSuccessStatusCode();
